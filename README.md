@@ -2,7 +2,7 @@
 
 An **unofficial, read-only** Jupiter Ed student data reader for an independently owned **private** GitHub repository. Each student supplies their own account, expected identity, school configuration, and encryption key. No account, sample student record, or production state is included.
 
-This is a private template candidate. Synthetic tests do not establish that a new school or account works: first deployment with a separately authorized test account is **not yet verified**. Do not publish student repositories or use another student's credentials.
+This repository is a **source-only GitHub Template** for independently owned private deployments. Synthetic tests do not establish that a new school or account works: first deployment with a separately authorized test account is **not yet verified**. Do not publish student repositories or use another student's credentials.
 
 **[中文安装指南](docs/INSTALL.zh-CN.md)** · [Secrets 设置](docs/SECRETS.zh-CN.md) · [支持与限制](docs/SUPPORT.zh-CN.md) · [安全审核](docs/SECURITY-AUDIT.md)
 
@@ -20,7 +20,7 @@ It does **not** change Jupiter Done, grades, uploads, or submissions; write to T
 
 ## First deployment
 
-1. Once this template is available to you, choose **Use this template → Create a new repository → Private**. Use your own account, not somebody else's production repository.
+1. Sign in to GitHub, then choose **Use this template → Create a new repository → Private**. Use your own account, not somebody else's production repository. Do not include all branches.
 2. Add the five repository Secrets listed below. Create a unique encryption key for this repository. Do not commit filled-in configuration.
 3. Open **Actions → Student read → Run workflow**. Choose `initialize`, check `confirm_initialization`, then run once. Initialization requires an empty state; it cannot reset existing data.
 4. Check the successful read and encrypted-save summary. Logs show counts and error codes, not assignments or grades. Follow the Chinese guide to export your own data privately if you need to verify details.
@@ -37,6 +37,8 @@ Required Secrets:
 | `JUPITER_STATE_KEY` | A unique random 32-byte key encoded as Base64 |
 
 `GITHUB_REPOSITORY` comes from your runner. `GITHUB_TOKEN` is supplied by GitHub for that run. No copied account or repository fallback is used. Missing credentials fail safely before login. See [the configuration guide](docs/SECRETS.zh-CN.md) for exact fields.
+
+Never put passwords, filled-in configuration, decrypted exports, grades, or assignments in a public repository. This template contains no student Secrets or data, and its own scheduled collection is disabled. Real collection also refuses a public deployment repository. The first version provides read-only collection and encrypted storage, **not a complete TickTick synchronization service or an AI study planner**.
 
 ## Schedule and privacy
 

@@ -1,6 +1,6 @@
 # 中文安装指南
 
-这是非官方、只读工具。你需要自己的 Jupiter 学生账号、自己的 GitHub 私有仓库以及学校允许的使用方式。它不会替你提交作业，也不会勾选 Done 或修改 TickTick。
+这是非官方、只读工具。你需要自己的 Jupiter 学生账号、自己的 GitHub 私有仓库以及学校允许的使用方式。它不会替你提交作业，也不会勾选 Done 或修改 TickTick。第一版只提供读取与加密保存，不包含完整的 TickTick 自动同步或 AI 学习规划。
 
 当前版本已准备独立部署流程，但**独立测试账号的首次真实登录尚未验证**。合成测试通过不能证明所有学校都可用；在完成自己的首次人工核验前，不要依赖它判断作业是否全部完成。
 
@@ -8,7 +8,7 @@
 
 在可访问的模板页选择 **Use this template → Create a new repository**，选择自己的账号，并务必选择 **Private**；不要勾选 **Include all branches**。模板创建方式会建立新的历史，步骤可对照 [GitHub 官方指南](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template)。不要 Fork 他人的私人生产仓库，不要复制其历史状态、密钥或任务映射。
 
-如果模板仍处于私有测试阶段且你看不到按钮，等待维护者完成审核并提供访问方式；不需要索取其生产仓库权限。
+通用模板只提供源码与合成示例；每位同学都应另建自己的 Private 仓库并自行设置 Secrets，不需要访问维护者的生产仓库。未登录时先登录 GitHub，再使用模板按钮。不要把自己的账号或数据配置在通用模板本体中。
 
 ## 2. 准备自己的配置
 
