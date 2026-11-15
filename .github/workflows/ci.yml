@@ -30,6 +30,9 @@ jobs:
           CHROME_PATH: /usr/bin/google-chrome
       - run: npm run audit:shareable
       - name: Missing credentials fail before any login
+        env:
+          # This is the empty-configuration test, even when synthetic CI is rerun.
+          GITHUB_RUN_ATTEMPT: '1'
         run: |
           if npm run read > /tmp/missing-config-result 2>&1; then
             exit 1
