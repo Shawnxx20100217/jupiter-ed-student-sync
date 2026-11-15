@@ -1,0 +1,13 @@
+name = "student-read-watchdog"
+main = "worker.mjs"
+compatibility_date = "2026-11-01"
+
+[triggers]
+crons = [] # Optional: after your successful first read, use ["*/15 * * * *"].
+
+[vars]
+WATCHDOG_ENABLED = "false"
+GITHUB_REPOSITORY = "YOUR_OWNER/YOUR_PRIVATE_REPOSITORY"
+BUSINESS_TIMEZONE = "Asia/Shanghai"
+WATCHDOG_SCHEDULE = '{"weekdays":["11:45","17:20","20:50"],"weekends":["11:30","20:50"]}'
+# GITHUB_WATCHDOG_TOKEN must be a Cloudflare Secret, never a plain variable here.

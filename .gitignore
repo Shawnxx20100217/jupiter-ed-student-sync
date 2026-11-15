@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.private/
+.env
+.env.*
+!.env.example
+*.log
+*.enc.json
+*.pem
+*.key
+.wrangler/
+.DS_Store
+coverage/
+optional/cloudflare/wrangler.toml

@@ -1,0 +1,13 @@
+{
+  "school": "Fictional Academy",
+  "city": "Example City",
+  "state": "Other",
+  "expected_school_year": "2030-2031",
+  "expected_term": "Semester 1",
+  "expected_courses": ["Example Science", "Example Literature"],
+  "timezone": "Asia/Shanghai",
+  "schedule": {
+    "weekdays": ["11:45", "17:20", "20:50"],
+    "weekends": ["11:30", "20:50"]
+  }
+}

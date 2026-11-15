@@ -1,0 +1,38 @@
+name: Synthetic safety checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  synthetic:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+      # Audit application history, without importing the user's runtime data branch.
+      # Checkout owns the credential for the initial fetch only, so no extra fetch
+      # is made using student secrets. Complete local pre-release audit is separate.
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24.22.3'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm run build
+      - run: npm test
+      - name: Offline synthetic page in headless Chromium
+        run: npm run test:browser
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+      - run: npm run audit:shareable
+      - name: Missing credentials fail before any login
+        run: |
+          if npm run read > /tmp/missing-config-result 2>&1; then
+            exit 1
+          fi
+          node -e "const s=require('node:fs').readFileSync('/tmp/missing-config-result','utf8');if(!s.includes('required_configuration_missing'))process.exit(1)"
+          rm /tmp/missing-config-result

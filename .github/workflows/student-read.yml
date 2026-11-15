@@ -1,0 +1,72 @@
+name: Student read
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        type: choice
+        options: [read, initialize]
+        default: read
+        description: 'First run only: initialize. Later runs: read.'
+      confirm_initialization:
+        type: boolean
+        default: false
+        description: 'I am initializing my own private repository with my own authorized account.'
+      trigger:
+        type: choice
+        options: [manual, watchdog]
+        default: manual
+        description: 'Keep manual; watchdog is used only by the optional independent scheduler.'
+  schedule:
+    # UTC heartbeat only; the reader checks the user's business timezone/windows.
+    - cron: '17 * * * *'
+permissions: {}
+concurrency:
+  group: student-source-state
+  cancel-in-progress: false
+jobs:
+  read:
+    if: github.event_name == 'workflow_dispatch' || vars.SYNC_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      actions: read
+    env:
+      SYNC_MODE: ${{ inputs.mode || 'read' }}
+      CONFIRM_INITIALIZATION: ${{ inputs.confirm_initialization && 'true' || 'false' }}
+      READ_TRIGGER: ${{ inputs.trigger || 'schedule' }}
+      SYNC_ENABLED: ${{ vars.SYNC_ENABLED }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24.22.3'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm run build
+      - name: Check initialization, snapshot freshness and login budget
+        id: gate
+        run: node src/run.cjs --preflight
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          JUPITER_CONFIG: ${{ secrets.JUPITER_CONFIG }}
+          JUPITER_EXPECTED_NAME: ${{ secrets.JUPITER_EXPECTED_NAME }}
+          JUPITER_USERNAME: ${{ secrets.JUPITER_USERNAME }}
+          JUPITER_STATE_KEY: ${{ secrets.JUPITER_STATE_KEY }}
+      - name: Verify installed headless browser
+        if: steps.gate.outputs.allowed == 'true'
+        run: |
+          command -v google-chrome
+          google-chrome --version
+      - name: Collect validated student data
+        if: steps.gate.outputs.allowed == 'true'
+        run: node src/run.cjs
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+          GITHUB_TOKEN: ${{ github.token }}
+          JUPITER_CONFIG: ${{ secrets.JUPITER_CONFIG }}
+          JUPITER_EXPECTED_NAME: ${{ secrets.JUPITER_EXPECTED_NAME }}
+          JUPITER_USERNAME: ${{ secrets.JUPITER_USERNAME }}
+          JUPITER_PASSWORD: ${{ secrets.JUPITER_PASSWORD }}
+          JUPITER_STATE_KEY: ${{ secrets.JUPITER_STATE_KEY }}

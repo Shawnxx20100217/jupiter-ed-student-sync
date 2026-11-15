@@ -1,0 +1,19 @@
+{
+  "name": "jupiter-ed-student-sync",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Independent, read-only student source snapshots for private repositories",
+  "license": "MIT",
+  "engines": { "node": ">=24 <25" },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --test tests/*.test.cjs",
+    "test:browser": "node scripts/browser-smoke.cjs",
+    "read": "node src/run.cjs",
+    "export": "node scripts/export.cjs",
+    "ticktick:preview": "node scripts/ticktick-preview.cjs",
+    "audit:shareable": "node scripts/audit-shareable.cjs"
+  },
+  "dependencies": { "puppeteer-core": "25.17.0" },
+  "devDependencies": { "@types/node": "24.10.0", "typescript": "5.9.3" }
+}
