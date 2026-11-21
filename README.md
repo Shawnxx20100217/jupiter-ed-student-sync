@@ -1,80 +1,46 @@
 # Jupiter Ed Student Sync
 
-An **unofficial, read-only** Jupiter Ed student data reader for an independently owned **private** GitHub repository. Each student supplies their own account, expected identity, school configuration, and encryption key. No account, sample student record, or production state is included.
+[中文安装指南](docs/INSTALL.zh-CN.md) · [English guide](docs/README.en.md) · [支持范围](docs/SUPPORT.zh-CN.md)
 
-This repository is a **source-only GitHub Template** for independently owned private deployments. Synthetic tests do not establish that a new school or account works: first deployment with a separately authorized test account is **not yet verified**. Do not publish student repositories or use another student's credentials.
+把自己的 Jupiter 课程、作业和校历保存在自己的 GitHub 私有仓库。每次读取后，你可以看到新增了哪些记录、哪项作业改了日期，或某一天学校发布了什么公告。GitHub 运行页面显示统计，课程与公告明细保存在加密快照中。
 
-**[中文安装指南](docs/INSTALL.zh-CN.md)** · [Secrets 设置](docs/SECRETS.zh-CN.md) · [支持与限制](docs/SUPPORT.zh-CN.md) · [安全审核](docs/SECURITY-AUDIT.md)
+![离线演示中的虚构美术作业 Sketchbook study，来源日期从 2030 年 10 月 15 日改到 16 日。](docs/assets/field-notes.svg)
 
-## What it does
+## 先看作业改期和校历公告
 
-- Reads supported student course, assignment, category, displayed grade, and To Do views using the existing TypeScript/Puppeteer reader.
-- Checks the authenticated student, school, year, term, and exact configured course set before accepting a complete scan.
-- Preserves raw grades and raw date text. An uncertain year, due time, or completion status remains uncertain.
-- Uses numeric Jupiter assignment IDs within the account/school/year/term/course scope; detects source additions and changes without title matching.
-- Stores an authenticated encrypted snapshot in the private repository's `sync-state` branch, with conflict checks and encrypted readback.
-- Retains previously seen records that disappear from a scan; it does not interpret absence as deletion.
-- Exports decrypted JSON only to a private local output path. An optional local TickTick proposal command produces JSON without calling TickTick.
+在装有 **Node.js 24** 的电脑上下载并解压本项目，在含有 `package.json` 的目录运行下面这条命令。演示使用两门虚构课程，无需账号、浏览器或安装依赖。
 
-It does **not** change Jupiter Done, grades, uploads, or submissions; write to TickTick; generate a study plan; send student records to an AI provider; or calculate an official GPA. A gradebook entry is not automatically a homework task.
+```sh
+npm run demo
+```
 
-## First deployment
-
-1. Sign in to GitHub, then choose **Use this template → Create a new repository → Private**. Use your own account, not somebody else's production repository. Do not include all branches.
-2. Add the five repository Secrets listed below. Create a unique encryption key for this repository. Do not commit filled-in configuration.
-3. Open **Actions → Student read → Run workflow**. Choose `initialize`, check `confirm_initialization`, then run once. Initialization requires an empty state; it cannot reset existing data.
-4. Check the successful read and encrypted-save summary. Logs show counts and error codes, not assignments or grades. Follow the Chinese guide to export your own data privately if you need to verify details.
-5. Only after verifying the first read, add repository variable `SYNC_ENABLED=true`. Until then, scheduled reads are disabled.
-
-Required Secrets:
-
-| Name | Your value |
+| 演示中的读取 | 你会看到什么 |
 | --- | --- |
-| `JUPITER_USERNAME` | Your authorized Jupiter login name or ID |
-| `JUPITER_PASSWORD` | Your password |
-| `JUPITER_EXPECTED_NAME` | Exact student name displayed by Jupiter |
-| `JUPITER_CONFIG` | Your school, year, term, course list, timezone, and schedule JSON |
-| `JUPITER_STATE_KEY` | A unique random 32-byte key encoded as Base64 |
+| 第一次读取 | 发现两条作业。数学作业只写了 `10/12`，程序保留原文，完整截止日期显示为未知。 |
+| 美术作业改期 | 日期从 `2030-10-15` 变为 `2030-10-16`，同一条作业记为「已变更」。 |
+| 再读相同内容 | 0 新增、0 变化、2 条不变。 |
 
-`GITHUB_REPOSITORY` comes from your runner. `GITHUB_TOKEN` is supplied by GitHub for that run. No copied account or repository fallback is used. Missing credentials fail safely before login. See [the configuration guide](docs/SECRETS.zh-CN.md) for exact fields.
+演示还会列出两天的虚构校历公告。比如 2030 年 10 月 3 日的集会，日期有出处，开始时间显示为未知。
 
-Never put passwords, filled-in configuration, decrypted exports, grades, or assignments in a public repository. This template contains no student Secrets or data, and its own scheduled collection is disabled. Real collection also refuses a public deployment repository. The first version provides read-only collection and encrypted storage, **not a complete TickTick synchronization service or an AI study planner**.
+## 读取自己的账号
 
-## Schedule and privacy
+1. 在仓库顶部选 **Use this template → Create a new repository**，为自己的副本选择 **Private**。
+2. 在自己的副本里填入 [5 个 GitHub Secrets](docs/SECRETS.zh-CN.md)，包括自己的账号、学校配置和专属加密密钥。请将密钥另存到密码管理器。
+3. 打开 **Actions → Student read → Run workflow**，选择 `initialize` 并勾选初始化确认。完成后在 **Summary** 找到 **Snapshot verified**，核对课程数与作业数。
+4. 如需校历，在仓库 **Variables** 中设置 `CALENDAR_READ_ENABLED=true`。校历在下次允许采集时生效。首次读取核对成功后，可用 `SYNC_ENABLED=true` 开启定时采集。
 
-The GitHub schedule checks hourly; configured business-timezone windows determine whether a new read is due. GitHub scheduling can be late or missed and is not a guarantee of exact delivery. Overlapping runs use the existing concurrency and state checks. An [optional Cloudflare watchdog](optional/cloudflare/README.md) can dispatch the **same** reader; it is not required for first deployment and must be separately configured by each student. It receives only private health metadata and a repository-scoped GitHub token, never a Jupiter password or decrypted student data. It uses conservative GitHub run-history checks, not a database-backed exactly-once dispatch guarantee; the reader still checks its lock, freshness, and login budget. No custom email or Issue alert channel is pre-enabled.
+[跟着中文指南完成首次读取、查看明细和处理常见问题 →](docs/INSTALL.zh-CN.md)
 
-The state file is `sync-state:state.enc.json`, encrypted with AES-256-GCM and bound to your repository and account configuration. The same private branch has a `health.json` containing only its schema, last successful collection time, sequence, and verification flag. Encryption does not hide ciphertext size, repository commit metadata, or update times from repository readers. Anyone who can alter your workflow code may attempt to obtain its Secrets: restrict collaborators and review changes before running them. Do not upload decrypted exports as Actions artifacts, commit them, or share workflow logs containing personal information.
+## 快照里有什么
 
-## Local commands
+| 来源 | 保存的内容 | 应该怎样理解 |
+| --- | --- | --- |
+| 课程与作业 | 课程、作业名称、原始成绩、分类、日期文本和跨次变化 | 已评分和已完成是两件事。缺少年份或时间时保留未知。 |
+| 学校 Calendar（可选） | 已核验月份中的日历记录、与作业的关联，以及按日期整理的公告原文 | 某天有公告只证明这一天出现了这条信息。钟点、节次及作业截止时间都需要单独的来源证据。 |
+| 本地导出 | 在自己的设备解密为 JSON，可另行生成 TickTick 预览文件 | 当前公开版提供只读采集与加密存档。TickTick 自动写入和 AI 学习规划不在本版范围内。 |
 
-Use Node.js 24 and the pinned dependencies:
+定时读取由 GitHub 执行，电脑可以关机。窗口使用你配置的时区，实际采集时间以运行结果为准。需要额外调度保障时，可选配 [Cloudflare](optional/cloudflare/README.md)。
 
-```sh
-npm ci
-npm run build
-npm test
-npm run audit:shareable
-```
+**验证进度。** 公开版提供使用虚构数据的测试与离线浏览器验证。独立学生账号的首次真实部署及其学校的 Calendar 兼容性仍待验证。第一次读取后，请对照自己的 Jupiter 页面核查覆盖范围。[支持与限制](docs/SUPPORT.zh-CN.md)
 
-Export your own encrypted state with the necessary environment values set locally, without printing them:
-
-```sh
-npm run export -- --output .private/export.json
-```
-
-For an already downloaded encrypted envelope, add `--encrypted-file /path/to/envelope.json`. This avoids the GitHub API but still requires the correct encryption key, repository, and account scope. The resulting JSON contains personal academic information.
-
-Optional **local-only** TickTick proposal:
-
-```sh
-npm run ticktick:preview -- --input .private/export.json --output .private/ticktick-proposal.json --project-id your-own-project-id
-```
-
-This writes a proposal file, not a TickTick task. No TickTick credentials or network client are included.
-
-## Responsible use and license
-
-This project is not affiliated with Jupiter Ed. Use only accounts and data you are authorized to access. Follow your school's rules and applicable service terms; do not bypass CAPTCHA, multifactor authentication, access controls, or rate limits. Avoid frequent polling. Different schools and Jupiter configurations may require changes, and support is not guaranteed.
-
-Upstream `jupiter-api` is MIT licensed, copyright © 2022 Taj Jethwani-Keyser. New code is MIT licensed, copyright © 2026 Jupiter Ed Student Sync contributors. See [LICENSE](LICENSE) and [NOTICE.md](NOTICE.md).
+**隐私与许可。** 这是非官方第三方工具，与 Jupiter Ed 无隶属关系。只使用你有权访问的账号，遵守学校规定和适用服务条款。密码、填好的配置、解密文件和学业数据应保存在自己控制的私有位置。项目采用 MIT 许可，包含 Taj Jethwani-Keyser 的 `jupiter-api` 改编代码。[安全审计](docs/SECURITY-AUDIT.md) · [许可证](LICENSE) · [原作者署名](NOTICE.md)

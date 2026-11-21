@@ -59,3 +59,40 @@ test('a full recent history page is refused even when it includes the current ru
  const storage={repo:'example-student/example-reader',token:'synthetic-token',fetchImpl:async url=>new Response(JSON.stringify(new URL(url).pathname.endsWith('/runs')?{workflow_runs:runs}:{total_count:0,jobs:[]}),{status:200})};
  await assert.rejects(attemptHistory(storage,{GITHUB_RUN_ID:'10000'},'2030-10-01T12:00:00Z'),{code:'attempt_history_truncated'});
 });
+
+test('the optional calendar reaches the private reader, encrypted checkpoint and aggregate run report', async () => {
+  const {attachObservation} = require('./helpers/synthetic-calendar.cjs');
+  const {runSummary} = require('../src/run-summary.cjs');
+  for (const enabled of [false, true]) {
+    const {f, env} = example();
+    env.CALENDAR_READ_ENABLED = String(enabled);
+    let readback;
+    const report = await collect(env, {
+      ...deps(),
+      readJupiter: async ({config}) => {
+        assert.equal(config.include_calendar, enabled);
+        if (enabled) attachObservation(f);
+        return {payload: f.payload};
+      },
+      saveState: async ({state, key, repo}) => {
+        readback = decodeState(encodeState(state, key, repo, f.scope), key, repo, f.scope);
+        return {verified: true};
+      },
+    });
+    assert.equal(report.encrypted_readback_verified, true);
+    assert.equal(readback.tasks.length, 2);
+    if (enabled) {
+      assert.equal(report.calendar.complete_months, 2);
+      assert.equal(report.calendar.date_summaries, 2);
+      assert.equal(readback.calendar_date_summaries.records.length, 2);
+      const summary = runSummary(report);
+      assert.match(summary, /School calendar/);
+      assert.match(summary, /2 \/ 2/);
+      assert.doesNotMatch(summary + JSON.stringify(report), /Synthetic October assembly/);
+    } else {
+      assert.equal(readback.calendar_events, undefined);
+      assert.equal(report.calendar, undefined);
+      assert.doesNotMatch(runSummary(report), /School calendar/);
+    }
+  }
+});

@@ -23,6 +23,8 @@ jobs:
           node-version: '24.22.3'
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npm run build
+      - name: Try the offline student demo
+        run: npm run demo
       - run: npm test
       - name: Offline synthetic page in headless Chromium
         run: npm run test:browser

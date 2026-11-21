@@ -63,6 +63,7 @@ jobs:
         if: steps.gate.outputs.allowed == 'true'
         run: node src/run.cjs
         env:
+          CALENDAR_READ_ENABLED: ${{ vars.CALENDAR_READ_ENABLED }}
           CHROME_PATH: /usr/bin/google-chrome
           GITHUB_TOKEN: ${{ github.token }}
           JUPITER_CONFIG: ${{ secrets.JUPITER_CONFIG }}

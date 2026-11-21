@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 186" role="img" aria-labelledby="title desc">
+  <title id="title">Sketchbook study · date change in the offline demo</title>
+  <desc id="desc">Two fictional snapshots of the same art assignment. The source date moves from 15 October to 16 October 2030.</desc>
+  <defs>
+    <pattern id="paper" width="18" height="18" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r=".9" fill="#beccc2"/></pattern>
+  </defs>
+  <rect width="820" height="186" rx="10" fill="#f6f4e9"/>
+  <rect x="0" y="0" width="168" height="186" rx="10" fill="#123d36"/>
+  <path d="M156 0h12v186h-12z" fill="#123d36"/>
+  <g transform="translate(84 93) rotate(-9)" fill="none" stroke-linejoin="round">
+    <path d="M-40-45h64l15 12v76h-79z" fill="#bd9c68" stroke="#091f1b" stroke-width="2"/>
+    <path d="M-43-50h67l11 12v76h-78z" fill="#ffecab" stroke="#163c33" stroke-width="2"/>
+    <path d="M-29-50v88m52-87v13h12" stroke="#a0824f" stroke-width="1.4"/>
+    <path d="M-18-23h38M-18-13h30" stroke="#876e46" stroke-width="2"/>
+    <ellipse cx="0" cy="8" rx="10" ry="10" fill="#d67d51" stroke="#183f36" stroke-width="1.5"/>
+    <ellipse cx="0" cy="8" rx="21" ry="5" transform="rotate(-22 0 8)" stroke="#1b4136" stroke-width="1.8"/>
+  </g>
+  <rect x="168" y="0" width="652" height="186" rx="10" fill="url(#paper)"/>
+  <g font-family="Arial, Helvetica, sans-serif" fill="#163f35">
+    <text x="203" y="41" font-size="16" font-weight="bold" letter-spacing="1.3">OFFLINE DEMO</text>
+    <text x="203" y="86" font-family="Georgia, serif" font-size="37">Sketchbook study</text>
+    <text x="205" y="125" font-size="21">Example Art</text>
+  </g>
+  <g transform="translate(570 20)" font-family="Arial, Helvetica, sans-serif">
+    <rect x="6" y="6" width="211" height="146" rx="7" fill="#c6cbbd"/>
+    <rect width="211" height="146" rx="7" fill="#fffcf1" stroke="#a9b7a7"/>
+    <path d="M0 43h211" stroke="#c5cdbf"/>
+    <text x="18" y="29" font-size="18" fill="#305249">October 2030</text>
+    <text x="18" y="95" font-size="43" font-family="Georgia, serif" fill="#6a716a">15</text>
+    <path d="M78 79h28m-8-8 9 8-9 8" fill="none" stroke="#68796c" stroke-width="2"/>
+    <text x="132" y="95" font-size="43" font-family="Georgia, serif" fill="#143e35">16</text>
+    <path d="M130 102q21-4 51-2" fill="none" stroke="#d98654" stroke-width="4"/>
+    <text x="20" y="128" font-size="16" fill="#53645b">Before</text>
+    <text x="132" y="128" font-size="16" fill="#244a3e">After</text>
+  </g>
+</svg>

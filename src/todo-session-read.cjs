@@ -51,7 +51,7 @@ async function readNavigation(page,nav,route,{optional=false}={}){
  if(!(await nav.isAuthenticated()))fail('todo_session_expired');
  return true;
 }
-async function collectTodoFromAuthenticatedPage(page,nav,courses){
+async function collectTodoFromAuthenticatedPage(page,nav,courses,{isolateCalendarFailure=false}={}){
  const authenticated_route_candidates=[page.url()];
  await readNavigation(page,nav,'todo');
  authenticated_route_candidates.push(page.url());
@@ -68,17 +68,22 @@ async function collectTodoFromAuthenticatedPage(page,nav,courses){
      course_candidates:expected.filter(c=>boxText.includes(c)),course_container:box?{tag:box.tagName,id:box.id,cls:box.className}:null,
      cells:[...e.children].map(c=>({text:c.textContent,cls:c.className,title:c.getAttribute('title')}))};})};
  },courses);
- let calendar=null;
- if(await readNavigation(page,nav,'calendar',{optional:true})){
-  authenticated_route_candidates.push(page.url());
-  calendar=await page.evaluate(()=>({
-   actions:[...document.querySelectorAll('#mainpage [click],#mainpage [onclick]')].map(e=>{
-    const ancestors=[];let p=e;for(let i=0;p&&i<6;i++,p=p.parentElement)ancestors.push({tag:p.tagName,id:p.id,cls:p.className});
-    return {handler:e.getAttribute('click')||e.getAttribute('onclick'),ancestors};}),months:[]}));
+ let calendar=null,calendar_error=null;
+ try {
+   if(await readNavigation(page,nav,'calendar',{optional:true})){
+     authenticated_route_candidates.push(page.url());
+     calendar=await page.evaluate(()=>({
+       actions:[...document.querySelectorAll('#mainpage [click],#mainpage [onclick]')].map(e=>{
+         const ancestors=[];let p=e;for(let i=0;p&&i<6;i++,p=p.parentElement)ancestors.push({tag:p.tagName,id:p.id,cls:p.className});
+         return {handler:e.getAttribute('click')||e.getAttribute('onclick'),ancestors};}),months:[]}));
+   }
+ } catch (error) {
+   if (!isolateCalendarFailure) throw error;
+   calendar_error = 'calendar_navigation_failed';
  }
  // URLs stay in memory only; enrichment stores the proven school ID, never the
  // full student route. Later read navigation can expose an ID absent at login.
- return {view,calendar,authenticated_route_candidates};
+ return {view,calendar,calendar_error,authenticated_route_candidates};
 }
 
 function enrichSourceWithTodo(payload,captured,config,authenticatedUrl,scope){

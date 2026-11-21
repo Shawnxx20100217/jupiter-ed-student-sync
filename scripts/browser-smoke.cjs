@@ -21,7 +21,8 @@ async function main(){
     assert.equal(await page.evaluate(loginPageState,'Fictional Academy'),'upstream_maintenance');
     await page.setContent('<html><body><input id="text_studid1"><input id="text_password1" type="password"><input id="text_city1"><input id="text_school1"></body></html>');
     assert.equal(await page.evaluate(loginPageState,'Fictional Academy'),true);
-    console.log(JSON.stringify({synthetic_browser_verified:true,real_account_tested:false,credential_submissions:0}));
+    const calendar=await require('../tests/helpers/calendar-browser.cjs').smokeCalendar(browser);
+    console.log(JSON.stringify({synthetic_browser_verified:true,synthetic_calendar:calendar,real_account_tested:false,credential_submissions:0}));
   }finally{await browser?.close();await fs.rm(directory,{recursive:true,force:true});}
 }
 main().catch(()=>{console.error('synthetic_browser_test_failed');process.exitCode=1;});

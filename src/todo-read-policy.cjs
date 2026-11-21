@@ -10,6 +10,57 @@ const CREDENTIAL=/^(?:text_)?(?:password\d*|passwd|pwd|username|user_name|studid
 const PASSWORD=/^(?:text_)?(?:password\d*|passwd|pwd)$/i;
 const DIRTY=/^(?:do|action|action\d*|command|cmd|operation|op|doit|change|changed|changes|dirty|save|saving|update|updating|flag|studflagdone|upload|submitwork|sendmessage|savegrade|delete|checkoff|setdone|markdone)(?:\d*|\[.*\])?$/i;
 const MUTATING_VALUE=/(?:^|[\s,;])(?:studflagdone|submitwork|sendmessage|savegrade|delete|checkoff|setdone|markdone)(?:$|[\s,;])/i;
+// Observed authenticated Calendar form. Its rendered month menu calls go()
+// without a destination: from=calendar, to='', todo='', calview=YYYY-MM.
+// This exception is available only while the collector clicks an exact menu
+// option witnessed on that same page. No arbitrary blank-route POST is allowed.
+const CALENDAR_FIELDS=new Set(['from','to','todo','mini','session','server','district','school','year','stud','contact',
+  'datemenu','class1','gterm','ass','autologin','calschoolyear','showhw','showannounce','showbreakfast','showlunch','calview','pagecomplete']);
+// Official /js/2.js go() appends these immediately before submitting: the
+// page's server-adjusted request clock and the read-navigation busy label.
+// They are not unrestricted fields: validate their values below, only here.
+const CALENDAR_RUNTIME_FIELDS=new Set(['pagereq','busymsg']);
+function calendarMonthError({formEntries,queryEntries,context,url}){
+  if(!/^\d{4}-(?:0[1-9]|1[0-2])$/.test(context?.calendarMonth||''))return 'calendar_month_context_missing';
+  if(!/^\d+ \d{8}$/.test(context?.calendarSchoolYear||''))return 'calendar_school_year_context_missing';
+  // Jupiter's real form action retains the authenticated page's w route.
+  // This is URL-only routing evidence, not an extra form/write capability.
+  // Bind it to the exact already identity-checked page; never infer a student
+  // route or allow arbitrary query fields/duplicates/another school's route.
+  if(!context.calendarPageUrl || !queryEntries.length)return 'calendar_route_context_missing';
+  if(queryEntries.length!==1||queryEntries[0][0]!=='w')return 'calendar_route_query_unverified';
+  let witnessed;try{witnessed=new URL(context.calendarPageUrl);}catch{return 'calendar_route_context_missing';}
+  const observed=[...witnessed.searchParams];
+  if(witnessed.origin!=='https://login.jupitered.com'||witnessed.pathname!==url.pathname||
+    observed.length!==1||observed[0][0]!=='w'||queryEntries[0][1]!==observed[0][1]||
+    !/^\d+(?:,\d+)+$/.test(queryEntries[0][1])||queryEntries[0][1].split(',')[0]!==context.calendarSchoolYear.split(' ')[0])
+    return 'calendar_route_mismatch';
+  const names=formEntries.map(([key])=>key);
+  if(names.some(key=>!CALENDAR_FIELDS.has(key)&&!CALENDAR_RUNTIME_FIELDS.has(key)))return 'calendar_month_field_unverified';
+  if(new Set(names).size!==names.length)return 'calendar_month_duplicate_field';
+  const values=new Map(formEntries);
+  if(context.used) return 'calendar_month_request_already_used';
+  if(!context.routeFields || typeof context.routeFields!=='object') return 'calendar_form_scope_unproven';
+  for(const field of ['school','stud','year','district','contact']){
+    if(values.has(field)!==Object.hasOwn(context.routeFields,field) ||
+       values.has(field)&&values.get(field)!==context.routeFields[field]) return 'calendar_form_scope_mismatch';
+  }
+  if(values.has('busymsg')&&values.get('busymsg')!=='Loading')return 'calendar_busy_state_unverified';
+  if(values.has('pagereq')){
+    const clock=context.calendarTiming,elapsed=Date.now()-clock?.capturedAtMs;
+    if(!Number.isSafeInteger(clock?.capturedAtMs)||!Number.isFinite(clock?.serverSeconds)||clock.serverSeconds<=0||
+      !Number.isFinite(elapsed)||elapsed<0||elapsed>15000)return 'calendar_request_time_unproven';
+    const raw=values.get('pagereq'),actual=Number(raw),expected=clock.serverSeconds+elapsed/1000;
+    // now(true) is floor(Date.now()/1000); allow only that rounding boundary
+    // plus a small event-loop tolerance, not an arbitrary replayed timestamp.
+    if(!/^[1-9]\d{8,10}(?:\.\d{1,9})?$/.test(raw)||!Number.isFinite(actual)||Math.abs(actual-expected)>2)
+      return 'calendar_request_time_mismatch';
+  }
+  if(values.get('from')!=='calendar'||values.get('to')!==''||values.get('todo')!==''||
+    values.get('calview')!==context.calendarMonth||values.get('showhw')!=='1'||values.get('showannounce')!=='1'||
+    values.get('mini')!=='0'||values.get('pagecomplete')!=='1'||values.get('calschoolyear')!==context.calendarSchoolYear)return 'calendar_month_navigation_mismatch';
+  return null;
+}
 function routeError(entries,allowedRoutes){
   const routes=entries.filter(([key])=>NAV_FIELDS.has(key.toLowerCase()));
   if(!routes.length)return 'navigation_destination_missing';
@@ -41,6 +92,7 @@ function evaluateTodoRequest(request,counters={},options={}){
   }
   if(url.hostname!=='login.jupitered.com'||request.isNavigation!==true)return deny('post_not_official_navigation');
   if(!LOGIN.test(url.pathname)&&!STUDENT.test(url.pathname))return deny('post_endpoint_not_allowed');
+  if(options.calendarMonth!==undefined&&!STUDENT.test(url.pathname))return deny('calendar_route_mismatch');
   if(typeof request.postData!=='string'||!request.postData||/^\s*[\[{]/.test(request.postData))return deny('post_body_not_form');
   const form=new URLSearchParams(request.postData);
   if([...form.keys()].some(key=>!key||/[\r\n\0]/.test(key)))return deny('form_key_invalid');
@@ -60,6 +112,11 @@ function evaluateTodoRequest(request,counters={},options={}){
   }
   const combined=[...url.searchParams,...form];
   if(combined.some(([key,value])=>DIRTY.test(key)&&value.trim()||MUTATING_VALUE.test(value)))return deny('dirty_navigation_form');
+  if(options.calendarMonth!==undefined&&options.phase==='todo'){
+    const error=calendarMonthError({formEntries:[...form],queryEntries:[...url.searchParams],context:options,url});
+    if(error)return deny(error);
+    bump('read_navigations');bump('calendar_month_navigations');return {allow:true,reason:'witnessed_calendar_month_navigation'};
+  }
   const error=routeError(combined,allowedRoutes);if(error)return deny(error);
   bump('read_navigations');return {allow:true,reason:'verified_read_navigation'};
 }

@@ -8,6 +8,8 @@ const {default:Jupiter, Navigator} = require('../dist/index.js');
 const {evaluateTodoRequest}=require('./todo-read-policy.cjs');
 const {collectTodoFromAuthenticatedPage,enrichSourceWithTodo}=require('./todo-session-read.cjs');
 
+const {collectCalendarFromAuthenticatedPage}=require('./calendar-session-read.cjs');
+
 class ReadError extends Error {
   constructor(code) { super(code); this.code=code; }
 }
@@ -63,14 +65,16 @@ async function collectOnce({config,credentials,scope,executablePath,onPhase=()=>
     page.on('dialog',d=>d.dismiss());
     page.on('requestfailed',r=>{if(r.isNavigationRequest()&&r.failure()?.errorText!=='net::ERR_BLOCKED_BY_CLIENT') counters.navigation_network_failures++});
     await page.setRequestInterception(true);
-    let todoReadPhase=false;
+    let todoReadPhase=false, calendarContext=null, calendarBlocked=false;
     page.on('request',r=>{
-      const verdict=evaluateTodoRequest({url:r.url(),method:r.method(),isNavigation:r.isNavigationRequest(),postData:r.postData()},counters,{phase:todoReadPhase?'todo':'course'});
+      const verdict=evaluateTodoRequest({url:r.url(),method:r.method(),isNavigation:r.isNavigationRequest(),postData:r.postData()},counters,{phase:todoReadPhase?'todo':'course',...calendarContext});
+      if(verdict.reason==='witnessed_calendar_month_navigation') calendarContext.used=true;
       if(!verdict.allow){
+        if(calendarContext&&r.isNavigationRequest()) calendarBlocked=true;
         if(verdict.reason==='outside_official_origin')counters.external_blocked++;
         else counters.write_attempts_blocked++;
       }
-      return (verdict.allow?r.continue():r.abort()).catch(()=>{});
+      return (verdict.allow?r.continue():r.abort('blockedbyclient')).catch(()=>{});
     });
     onPhase('login');
     const nav=new Navigator(page,onPhase);
@@ -91,13 +95,44 @@ async function collectOnce({config,credentials,scope,executablePath,onPhase=()=>
     if(student.courses.length!==config.expected_courses.length)throw new ReadError('incomplete_courses');
     onPhase('todo_evidence_scan');
     todoReadPhase=true;
-    const todo=await collectTodoFromAuthenticatedPage(page,nav,config.expected_courses);
+    const todo=await collectTodoFromAuthenticatedPage(page,nav,config.expected_courses,{isolateCalendarFailure:config.include_calendar===true});
     const at=new Date().toISOString();
     const payload={observed_at:at,timezone:config.timezone,school_year:config.expected_school_year,term:config.expected_term,
       coverage:{complete:true,courses:config.expected_courses},student,
       provenance:{reader:'audited jupiter-api cloud fork',source:'live authenticated Jupiter',upstream:'8fef207bf3bd59eb0075cf610de032c65c12ec89'}};
     const enriched=enrichSourceWithTodo(payload,todo,config,authenticatedUrl,scope);
     onPhase(enriched.provenance.school_identity_status.verified?'school_identity_verified':enriched.provenance.school_identity_status.reason);
+    if (config.include_calendar === true) {
+      const attemptedAt = new Date().toISOString();
+      let code = todo.calendar_error || (!todo.calendar ? 'calendar_menu_unavailable' : null);
+      let status = 'failed';
+      if (!code) {
+        onPhase('calendar_bounded_month_scan');
+        try {
+          const observation = await collectCalendarFromAuthenticatedPage(page,nav,config,enriched.provenance.school_identity,{
+            now: attemptedAt,
+            witnessedRoutes: [authenticatedUrl,...todo.authenticated_route_candidates],
+            onMonthSelect(month,schoolYear,pageUrl,calendarTiming,routeFields) {
+              calendarBlocked = false;
+              calendarContext = month ? {calendarMonth:month,calendarSchoolYear:schoolYear,calendarPageUrl:pageUrl,calendarTiming,routeFields,used:false} : null;
+            },
+            monthNavigationBlocked: () => calendarBlocked
+          });
+          enriched.calendar_observation = observation;
+          const incomplete = observation.months.find(m => m.status !== 'complete');
+          status = incomplete ? (observation.months.some(m => m.status !== 'failed') ? 'partial' : 'failed') : 'read';
+          code = incomplete?.error_code || null;
+        } catch(error) {
+          if (['calendar_identity_mismatch','calendar_school_identity_mismatch','calendar_origin_invalid','calendar_school_route_ambiguous'].includes(error.code)) {
+            throw new ReadError('identity_mismatch');
+          }
+          code = error.code === 'calendar_route_context_missing' ? error.code : 'calendar_read_failed';
+        } finally {
+          calendarContext = null;
+        }
+      }
+      enriched.calendar_collection_status = {attempted_at:attemptedAt,status,error_code:code};
+    }
     return enriched;
   } catch(e) { throw classifyError(e,counters) }
   finally {

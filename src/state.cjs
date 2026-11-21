@@ -170,7 +170,9 @@ function validatePrevious(previous, scopeHash, schoolId) {
  * Caller must persist it atomically only when this function returns successfully.
  */
 function buildState(input, previous=null, context={}) {
-  const payload=copyJSON(input);
+  if (!plain(input)) fail('incomplete_scan');
+  const {calendar_observation: calendarObservation, calendar_collection_status: calendarAttempt, ...assignmentInput} = input;
+  const payload=copyJSON(assignmentInput);
   validatePayload(payload,context);
   const scope=copyJSON(validateScope(context.scope));
   if(scope.student_name!==text(payload.student.name)||scope.school_year!==text(payload.school_year)||scope.term!==text(payload.term))fail('source_scope_mismatch');
@@ -245,6 +247,12 @@ function buildState(input, previous=null, context={}) {
     reappeared_count:changes.reappeared.length,course_changed_count:changes.course_changed.length,
     identical_duplicates_merged:duplicates,semantic_fingerprint:state.semantic_fingerprint,
     official_gpa_observed:false,estimated_gpa_calculated:false};
+  // Keep the assignment-only v1 digest and evidence compatible with older snapshots.
+  // Optional Calendar evidence has independent fingerprints and an independent read status.
+  if (calendarObservation !== undefined || calendarAttempt !== undefined || previous?.calendar_collection_status) {
+    const extension = require('./calendar-state-extension.cjs');
+    summary.calendar = extension.attachCalendar(state, previous, calendarObservation, calendarAttempt);
+  }
   return {state,summary};
 }
 
@@ -263,6 +271,8 @@ function validateStoredState(state,scope) {
   if(present.length!==expectedTasks.size||present.some(t=>expectedTasks.get(t.id)?.semantic_fingerprint!==t.semantic_fingerprint))fail('stored_state_task_mismatch');
   const overall=fingerprint({courses:state.courses.map(c=>[c.name,c.semantic_fingerprint]),tasks:state.tasks.map(t=>[t.id,t.semantic_fingerprint,t.presence])});
   if(state.semantic_fingerprint!==overall)fail('stored_state_fingerprint_mismatch');
+  if (['calendar_events', 'calendar_date_summaries', 'calendar_collection_status'].some(key => Object.hasOwn(state, key)))
+    require('./calendar-state-extension.cjs').validateExtension(state);
   return state;
 }
 
